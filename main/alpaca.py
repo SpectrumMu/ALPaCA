@@ -283,3 +283,61 @@ class ALPaCAjax:
 
     def test(self, params, x_c, y_c, x, num_context=None):
         mu_pred, Sig_pred, _, _ = self.forward(params, x_c, y_c, x, y=None, num_context=num_context)
+
+
+def train_loop(model, dataset, num_steps, rng=None):
+    """
+    Train loop for the JAX/Flax ALPaCA implementation.
+
+    Args:
+      model: ALPaCAjax instance
+      dataset: object with method sample(n_funcs, n_samples) -> (x_np, y_np)
+      num_steps: number of training updates
+      rng: optional jax.random.PRNGKey
+
+    Returns:
+      dict with final params, opt_state, and loss_history
+    """
+    rng = model.rng if rng is None else rng
+    # Initialize params and optimizer state if not present on model
+    params = model.init_params(rng)
+    opt_state = model.init_optimizer(params)
+
+    batch_size = int(model.config['meta_batch_size'])
+    horizon = int(model.config['data_horizon'])
+    test_horizon = int(model.config['test_horizon'])
+    n_samples = horizon + test_horizon
+
+    loss_history = []
+
+    for i in range(num_steps):
+        # advance rng for sampling and for train_step
+        rng, rng_sample, rng_step = random.split(rng, 3)
+
+        # Sample a meta-batch from dataset (numpy arrays)
+        x_np, y_np = dataset.sample(n_funcs=batch_size, n_samples=n_samples)
+
+        # Convert to jax arrays
+        batch = {
+            'x': jnp.asarray(x_np, dtype=jnp.float32),
+            'y': jnp.asarray(y_np, dtype=jnp.float32),
+        }
+
+        # Single train step (jax-jitted)
+        params, opt_state, metrics = model.train_step(params, opt_state, batch, rng=rng_step)
+
+        loss_val = float(metrics.get('loss', float('nan')))
+        loss_history.append(loss_val)
+
+        if i % 50 == 0:
+            rmse = metrics.get('RMSE_1step', None)
+            mpv = metrics.get('MPV_1step', None)
+            if rmse is not None and mpv is not None:
+                print(f'iter {i:6d}  loss: {loss_val:.6f}  RMSE_1step: {rmse:.6f}  MPV_1step: {mpv:.6f}')
+            else:
+                print(f'iter {i:6d}  loss: {loss_val:.6f}')
+
+    # persist final rng on model
+    model.rng = rng
+
+    return {'params': params, 'opt_state': opt_state, 'loss_history': loss_history}
