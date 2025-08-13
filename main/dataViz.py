@@ -5,7 +5,8 @@ from matplotlib import rc
 # rc('text', usetex=True)
 import matplotlib.pyplot as plt
 import time
-import torch
+import jax 
+import jax.numpy as jnp
 
 
 #NLL plotting
