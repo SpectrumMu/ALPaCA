@@ -1,10 +1,11 @@
 import numpy as np
 from matplotlib import rc
 ## for Palatino and other serif fonts use:
-rc('font',**{'family':'serif','serif':['Computer Modern Roman']})
-rc('text', usetex=True)
+# rc('font',**{'family':'serif','serif':['Computer Modern Roman']})
+# rc('text', usetex=True)
 import matplotlib.pyplot as plt
 import time
+import torch
 
 
 #NLL plotting
@@ -146,8 +147,12 @@ def gen_sin_fig(agent, X,Y,freq,phase,amp,upper_x=5,lower_x=-5,point_every=0.1, 
     y_list = []
     x_list = []
     s_list = []
+    X_tensor = torch.tensor(X, dtype=torch.float32).to(agent.device)
+    Y_tensor = torch.tensor(Y, dtype=torch.float32).to(agent.device)
     for p in np.arange(lower_x,upper_x,0.1):
-        y, s = agent.test(X, Y, [[[p]]])
+        y, s = agent.test(X_tensor, Y_tensor, torch.tensor([[[p]]], dtype=torch.float32).to(agent.device))
+        y = y.cpu().detach().numpy()
+        s = s.cpu().detach().numpy()
         y_list.append(y[0,0,0])
         x_list.append(p)
         if s:
@@ -308,8 +313,12 @@ def gen_multistep_fig(agent, X,Y,x_jump,upper_x=5,lower_x=-5,point_every=0.1, la
     y_list = []
     x_list = []
     s_list = []
+    X_tensor = torch.tensor(X, dtype=torch.float32).to(agent.device)
+    Y_tensor = torch.tensor(Y, dtype=torch.float32).to(agent.device)
     for p in np.arange(lower_x,upper_x,0.1):
-        y, s = agent.test(X, Y, [[[p]]])
+        y, s = agent.test(X_tensor, Y_tensor, torch.tensor([[[p]]], dtype=torch.float32).to(agent.device))
+        y = y.cpu().detach().numpy()
+        s = s.cpu().detach().numpy()
         y_list.append(y[0,0,0])
         x_list.append(p)
         if s:
