@@ -288,6 +288,8 @@ class ALPaCA(nn.Module):
             # Sample a meta-batch of tasks/sequences
             x_np, y_np = dataset.sample(n_funcs=batch_size, n_samples=horizon + test_horizon)
 
+            print(x_np.shape, y_np.shape)
+
             # Split into context and target segments
             ctx_x_np = x_np[:, :horizon, :]
             ctx_y_np = y_np[:, :horizon, :]
